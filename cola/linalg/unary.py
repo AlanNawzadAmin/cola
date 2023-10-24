@@ -44,7 +44,7 @@ class LanczosUnary(LinearOperator):
 
 @parametric
 class ArnoldiUnary(LinearOperator):
-    def __init__(self, A: LinearOperator, f: Callable, **kwargs):
+    def __init__(self, A: LinearOperator, f: Callable, start_vector=None, **kwargs):
         super().__init__(A.dtype, A.shape)
         self.A = A
         self.f = f
@@ -54,13 +54,14 @@ class ArnoldiUnary(LinearOperator):
     def _matmat(self, V):  # (n,bs)
         xnp = self.xnp
         Q, H, _, info = get_arnoldi_matrix(A=self.A, rhs=V, **self.kwargs)
-        # Q of shape (n, m, bs) H of shape (m,m,bs)
+        # Q of shape (bs, n, m) H of shape (bs, m, m)
         self.info.update(info)
         eigvals, P = self.xnp.eig(H)
         norms = self.xnp.norm(V, axis=0)
 
         e0 = self.xnp.canonical(0, (P.shape[1], V.shape[-1]), dtype=P.dtype, device=self.device)
-        Pinv0 = self.xnp.solve(P, e0.T)  # (bs, m, m) vs (bs, m)
+        Pinv0 = self.xnp.solve(P + xnp.finfo(self.dtype).eps * self.xnp.eye(P.shape[1], dtype=P.dtype, device=P.device),
+                               e0.T)  # (bs, m, m) vs (bs, m)
         out = Pinv0 * norms[:, None]  # (bs, m)
         Q = self.xnp.cast(Q, dtype=P.dtype)  # (bs, n, m)
         # (bs,n,m) @ (bs,m,m) @ (bs, m) -> (bs, n)
@@ -68,6 +69,22 @@ class ArnoldiUnary(LinearOperator):
         f_eigvals = xnp.where(xnp.abs(eigvals) > zero_thresh, self.f(eigvals), xnp.zeros_like(eigvals))
         out = (Q @ P @ (f_eigvals * out)[..., None])[..., 0]
         return out.T
+
+    def to_dense(self, start_vector=None):
+        if start_vector is None:
+            key = self.xnp.PRNGKey(42)
+            start_vector = self.xnp.randn((1, self.A.shape[-1]), dtype=self.dtype, device=self.device, key=key)
+        xnp = self.xnp
+        Q, H, _, info = get_arnoldi_matrix(A=self.A, rhs=start_vector.T, **self.kwargs)
+        self.info.update(info)
+        eigvals, P = self.xnp.eig(H)
+        Q = self.xnp.cast(Q, dtype=P.dtype)
+        Pinv = self.xnp.inv(P + xnp.finfo(self.dtype).eps * self.xnp.eye(P.shape[1], dtype=P.dtype, device=P.device))
+        out = Pinv @ self.xnp.swapaxes(Q, -1, -2)
+        
+        zero_thresh = 10 * xnp.finfo(self.dtype).eps * xnp.max(xnp.abs(eigvals), axis=1, keepdims=True)
+        f_eigvals = xnp.where(xnp.abs(eigvals) > zero_thresh, self.f(eigvals), xnp.zeros_like(eigvals))
+        return (Q @ P @ (f_eigvals[..., None] * out)).mean(axis=0)
 
 
 @dispatch

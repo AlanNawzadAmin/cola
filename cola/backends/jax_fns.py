@@ -6,7 +6,7 @@ from jax import jit, vmap, grad
 from jax import numpy as jnp
 from jax import tree_util as tu
 from jax.random import PRNGKey
-from jax.random import normal
+from jax.random import normal, poisson, uniform
 from jax.lax import while_loop as _while_loop
 from jax.lax import fori_loop as _for_loop
 from jax.lax import conj as conj_lax
@@ -26,6 +26,7 @@ exp = jnp.exp
 ndarray = jnp.ndarray
 arange = jnp.arange
 ones_like = jnp.ones_like
+einsum = jnp.einsum
 sign = jnp.sign
 any = jnp.any
 stack = jnp.stack
@@ -56,6 +57,7 @@ solve = jnp.linalg.solve
 sort = jnp.sort
 argsort = jnp.argsort
 jit = jit
+vjp = vjp
 copy = jnp.copy
 nan_to_num = jnp.nan_to_num
 dynamic_slice = dynamic_slice
@@ -76,16 +78,19 @@ roll = jnp.roll
 maximum = jnp.maximum
 PRNGKey = PRNGKey
 isreal = jnp.isreal
+real = jnp.real
 allclose = jnp.allclose
 slogdet = jnp.linalg.slogdet
 prod = jnp.prod
 moveaxis = jnp.moveaxis
+swapaxes = jnp.swapaxes
 fft = jnp.fft.fft
 ifft = jnp.fft.ifft
 slogdet = jnp.linalg.slogdet
 softmax = jax.nn.softmax
 log_softmax = jax.nn.log_softmax
 promote_types = jnp.promote_types
+power = jnp.power
 finfo = jnp.finfo
 fft = jnp.fft.fft
 ifft = jnp.fft.ifft
@@ -94,6 +99,9 @@ softmax = jax.nn.softmax
 log_softmax = jax.nn.log_softmax
 promote_types = jnp.promote_types
 finfo = jnp.finfo
+sigmoid = jax.nn.sigmoid
+relu = jax.nn.relu
+squeeze = jnp.squeeze
 
 
 def iscomplexobj(x):
@@ -230,6 +238,32 @@ def randn(*shape, dtype, device, key=None):
         return out
     else:
         z = normal(key, shape=shape, dtype=dtype)
+        return z
+
+
+def rand(*shape, dtype, device, key=None):
+    del device
+    if key is None:
+        logging.warning('Non keyed randn used. To be deprecated soon.')
+        out = np.random.uniform(*shape)
+        if dtype is not None:
+            out = out.astype(dtype)
+        return out
+    else:
+        z = uniform(key, shape=shape, dtype=dtype)
+        return z
+
+
+def rand_poisson(*shape, lam, dtype, device, key=None):
+    del device
+    if key is None:
+        logging.warning('Non keyed randn used. To be deprecated soon.')
+        out = np.random.poisson(*shape)
+        if dtype is not None:
+            out = out.astype(dtype)
+        return out
+    else:
+        z = poisson(key, lam, shape=shape, dtype=dtype)
         return z
 
 

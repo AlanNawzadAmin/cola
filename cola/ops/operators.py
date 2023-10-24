@@ -114,7 +114,7 @@ class Identity(LinearOperator):
 def I_like(A: LinearOperator) -> Identity:
     """ A function that produces an Identity operator with the same
         shape and dtype as A """
-    return Identity(dtype=A.dtype, shape=A.shape)
+    return Identity(dtype=A.dtype, shape=A.shape).to(A.device)
 
 
 @parametric

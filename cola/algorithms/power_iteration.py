@@ -3,7 +3,7 @@ from cola.ops import LinearOperator
 
 
 @export
-def power_iteration(A: LinearOperator, tol=1e-7, max_iter=1000, pbar=False, momentum=None):
+def power_iteration(A: LinearOperator, tol=1e-7, max_iter=1000, pbar=False, momentum=None, start_v=None):
     """
     Performs power iteration to compute the dominant eigenvector and eigenvalue
     of the operator.
@@ -22,7 +22,10 @@ def power_iteration(A: LinearOperator, tol=1e-7, max_iter=1000, pbar=False, mome
             - info (dict): General information about the iterative procedure.
     """
     xnp = A.xnp
-    v = xnp.randn(*A.shape[-1:], dtype=A.dtype, device=A.device, key=xnp.PRNGKey(0))
+    if start_v is None:
+        v = xnp.randn(*A.shape[-1:], dtype=A.dtype, device=A.device, key=xnp.PRNGKey(0))
+    else:
+        v = start_v
 
     @xnp.jit
     def body(state):
@@ -36,11 +39,11 @@ def power_iteration(A: LinearOperator, tol=1e-7, max_iter=1000, pbar=False, mome
 
     def err(state):
         *_, eig, eigprev = state
-        return abs(eigprev - eig) / eig
+        return abs((eigprev - eig) / eig)
 
     def cond(state):
         i = state[0]
-        return (i < max_iter) & (err(state) > tol)
+        return (i < max_iter) and (err(state) > tol)
 
     while_loop, infodict = xnp.while_loop_winfo(err, tol, pbar=pbar)
     _, v, _, emax, _ = while_loop(cond, body, (0, v, v, 10., 1.))

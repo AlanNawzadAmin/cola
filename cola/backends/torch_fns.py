@@ -21,6 +21,7 @@ any = torch.any
 inv = torch.linalg.inv
 pinv = torch.linalg.pinv
 norm = torch.linalg.norm
+einsum = torch.einsum
 abs = torch.abs
 all = torch.all
 mean = torch.mean
@@ -34,6 +35,7 @@ long = torch.long
 kron = torch.kron
 eye = torch.eye
 moveaxis = torch.moveaxis
+swapaxes = torch.swapaxes
 block_diag = torch.block_diag
 conj = torch.conj
 sqrt = torch.sqrt
@@ -56,7 +58,9 @@ sparse_csr = torch.sparse_csr_tensor
 roll = torch.roll
 maximum = torch.maximum
 isreal = torch.isreal
+real = torch.real
 allclose = torch.allclose
+power = torch.pow
 jacrev = torch.func.jacrev
 slogdet = torch.linalg.slogdet
 prod = torch.prod
@@ -65,6 +69,10 @@ promote_types = torch.promote_types
 finfo = torch.finfo
 slogdet = torch.linalg.slogdet
 iscomplexobj = torch.is_complex
+vjp=vjp
+sigmoid = torch.nn.Sigmoid()
+relu = torch.nn.ReLU()
+squeeze = torch.squeeze
 
 
 def get_array_device(array):
@@ -119,7 +127,10 @@ def get_device(array):
 
 
 def get_default_device():
-    return torch.device("cpu")
+    if is_cuda_available():
+        return torch.device('cuda')
+    else:
+        return torch.device("cpu")
 
 
 def device(device_name):
@@ -215,6 +226,28 @@ def randn(*shape, dtype, device, key=None):
     old_state = torch.random.get_rng_state()
     torch.random.manual_seed(key)
     z = torch.randn(*shape, dtype=dtype, device=device)
+    torch.random.set_rng_state(old_state)
+    return z
+
+
+def rand(*shape, dtype, device, key=None):
+    if key is None:
+        logging.warning('Non keyed randn used. To be deprecated soon.')
+        key = PRNGKey(0)
+    old_state = torch.random.get_rng_state()
+    torch.random.manual_seed(key)
+    z = torch.rand(*shape, dtype=dtype, device=device)
+    torch.random.set_rng_state(old_state)
+    return z
+
+
+def rand_poisson(*shape, lam, dtype, device, key=None):
+    if key is None:
+        logging.warning('Non keyed randn used. To be deprecated soon.')
+        key = PRNGKey(0)
+    old_state = torch.random.get_rng_state()
+    torch.random.manual_seed(key)
+    z = torch.poisson(*shape, dtype=dtype, device=device)
     torch.random.set_rng_state(old_state)
     return z
 

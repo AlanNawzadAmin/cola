@@ -16,7 +16,7 @@ def get_library_fns(dtype):
         pass
     try:
         import torch
-        if dtype in [torch.float32, torch.float64, torch.complex64, torch.complex128, torch.int32, torch.int64]:
+        if dtype in [torch.float16, torch.float32, torch.float64, torch.complex64, torch.complex128, torch.int32, torch.int64]:
             from cola.backends import torch_fns as fns
             return fns
     except ImportError:
